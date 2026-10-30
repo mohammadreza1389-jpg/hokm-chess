@@ -12,6 +12,8 @@ const srv=http.createServer((req,res)=>{
 const wss=new WebSocketServer({server:srv}),subs=new Map();
 wss.on('connection',ws=>{
   ws.on('message',m=>{let q;try{q=JSON.parse(m)}catch(e){return}
+    if(q.op==='hi'){ws.user=String(q.name||'').slice(0,40);return}
+    if(q.op==='online'){ws.send(JSON.stringify({id:q.id,data:[...new Set([...wss.clients].filter(w=>w.user&&w.readyState===1).map(w=>w.user))]}));return}
     if(typeof q.path!=='string'||q.path.length>40)return;
     if(q.op==='get')ws.send(JSON.stringify({id:q.id,data:D[q.path]||null}));
     else if(q.op==='set'){D[q.path]=q.data;save();

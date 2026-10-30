@@ -34,15 +34,24 @@ h2,h3{margin:4px 0}
 table{width:100%;border-collapse:collapse;font-size:14px}td,th{border-bottom:1px solid var(--bd);padding:6px;text-align:center}
 td input{width:70px;margin:0;padding:5px}
 .hide{display:none}
+.hero{text-align:center;padding:14px 8px;margin-bottom:8px;border-radius:12px;background:linear-gradient(135deg,#0f6e5622,#d4af3744)}
+.hero h2{font-size:18px;margin:6px 0}.suits{font-size:22px;letter-spacing:10px;animation:bob 3s ease-in-out infinite}
+.gor{display:inline-block;animation:bob 2.2s ease-in-out infinite}@keyframes bob{50%{transform:translateY(-7px) rotate(2deg)}}
+#splash{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:radial-gradient(circle at 50% 30%,#1a8f73,#0b3d33);color:#fff;transition:opacity .6s;cursor:pointer}
+#splash.out{opacity:0;pointer-events:none}#splash h1{margin:0;font-size:32px;color:#f5d97a}#splash small{opacity:.7;margin-top:14px}
+#toast{position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);left:8px;right:8px;z-index:50;background:#c0392b;color:#fff;padding:12px;border-radius:10px;text-align:center;box-shadow:0 4px 14px #0006}
+.ft{text-align:center;color:var(--mu);font-size:12px;margin:18px 0 6px}
+.ur{border-top:1px solid var(--bd);padding:10px 0}.ur .row{margin-top:6px}.ur input{flex:1;min-width:90px;margin:0}.ur button{flex:1;padding:7px 4px;font-size:13px}
 </style>
 </head>
 <body>
 <div class="card row sp" id="top"><b>♠ باشگاه حکم و شطرنج</b><span id="who" class="mu"></span><button id="out" class="hide">خروج</button></div>
 
 <div id="auth" class="card">
+  <div class="hero"><div class="gor"></div><h2>سلام رفیق! خوش اومدی به باشگاه حکم و شطرنج 🎉</h2><div class="mu">یه دست حکم با رفیقا یا یه شطرنج حسابی؟ وارد شو و سکه‌هات رو بترکون!</div><div class="suits">♠ ♥ ♦ ♣</div></div>
   <div class="row tabs"><button id="t1" class="on">ورود</button><button id="t2">ثبت‌نام</button><button id="t3">مدیر</button></div>
-  <input id="u" placeholder="نام کاربری" autocomplete="username">
-  <input id="p" type="password" placeholder="رمز عبور" autocomplete="current-password">
+  <input id="u" placeholder="اسمت چیه؟ (نام کاربری)" autocomplete="username">
+  <input id="p" type="password" placeholder="رمز عبور (محرمانه 🤫)" autocomplete="current-password">
   <div class="err" id="e"></div>
   <button class="p" id="go" style="width:100%">ورود</button>
   <p class="mu">با ثبت‌نام ۱۰۰ سکه هدیه می‌گیرید. ورود به حکم ۱۰ سکه و شطرنج ۵ سکه هزینه دارد؛ برد جایزه دارد.</p>
@@ -78,17 +87,20 @@ td input{width:70px;margin:0;padding:5px}
 </div>
 
 <div id="admin" class="card hide">
-  <h3>پنل مدیریت</h3>
-  <div style="overflow-x:auto"><table><thead><tr><th>کاربر</th><th>بازی</th><th>سکه</th><th>افزایش</th></tr></thead><tbody id="ut"></tbody></table></div>
-  <p class="mu">توجه: ذخیره‌سازی سمت مرورگر است؛ برای امنیت واقعی به سرور نیاز است.</p>
+  <div class="row sp"><h3>👑 پنل مدیریت</h3><button id="ar">🔄 به‌روزرسانی</button></div>
+  <div class="mu" id="ac"></div><div id="ul"></div>
+  <p class="mu">ذخیره‌سازی و دسترسی‌ها ساده است؛ برای پول واقعی مناسب نیست.</p>
 </div>
+<div class="ft">ساخته‌شده با ❤️ توسط محمدرضا قاسمی</div>
+<div id="toast" class="hide"></div>
+<div id="splash"><div class="gor"></div><div>ساخته‌شده توسط</div><h1>محمدرضا قاسمی</h1><small>برای ورود بزنید ✨</small></div>
 
 <script>
 (function(){
-const proto=location.protocol==='https:'?'wss:':'ws:';let ws,q=[],id=0,pend={},subs={};
+const proto=location.protocol==='https:'?'wss:':'ws:';let cur='',ws,q=[],id=0,pend={},subs={};
 const snap=d=>({exists:!!d,data:()=>d||undefined,metadata:{hasPendingWrites:false}});
 function conn(){ws=new WebSocket(proto+'//'+location.host);
-  ws.onopen=()=>{q.forEach(m=>ws.send(m));q=[];Object.keys(subs).forEach(p=>ws.send(JSON.stringify({op:'sub',path:p})))};
+  ws.onopen=()=>{if(cur)ws.send(JSON.stringify({op:'hi',name:cur}));q.forEach(m=>ws.send(m));q=[];Object.keys(subs).forEach(p=>ws.send(JSON.stringify({op:'sub',path:p})))};
   ws.onmessage=e=>{const m=JSON.parse(e.data);
     if(m.id&&pend[m.id]){pend[m.id](m.data);delete pend[m.id]}
     else if(m.path&&subs[m.path])subs[m.path].forEach(f=>f(snap(m.data)))};
@@ -99,6 +111,8 @@ const DBX={doc:p=>({
   get:()=>new Promise(r=>{const i=++id;pend[i]=d=>r(snap(d));send({op:'get',id:i,path:p})}),
   set:async d=>send({op:'set',path:p,data:d}),
   onSnapshot:f=>{(subs[p]=subs[p]||new Set()).add(f);send({op:'sub',path:p});return()=>subs[p].delete(f)}})};
+window.hello=n=>{cur=n||'';send({op:'hi',name:cur})};
+window.getOnline=()=>new Promise(r=>{const i=++id;pend[i]=d=>r(d||[]);send({op:'online',id:i});setTimeout(()=>{if(pend[i]){delete pend[i];r([])}},4000)});
 window.claude={use:async n=>n==='db'?DBX:null};
 })();
 const $=i=>document.getElementById(i);
@@ -129,15 +143,37 @@ $('go').onclick=async()=>{
   if(mode==='up'){if(S.users[u]){$('e').textContent='این نام قبلاً گرفته شده';return}
     S.users[u]={h,coins:100,games:0,wins:0,hokm:0,chess:0};await save()}
   else if(!S.users[u]||S.users[u].h!==h){$('e').textContent='نام کاربری یا رمز اشتباه است';return}
-  me=u;try{sessionStorage.setItem('me',u)}catch(e){}lobby()};
-$('out').onclick=()=>{me=null;try{sessionStorage.removeItem('me')}catch(e){}$('out').classList.add('hide');$('who').textContent='';$('p').value='';show('auth')};
-function renderAdmin(){const t=$('ut');t.innerHTML='';const names=Object.keys(S.users);
-  if(!names.length){t.innerHTML='<tr><td colspan=4>هنوز کاربری نیست</td></tr>';return}
-  names.forEach(n=>{const u=S.users[n],r=document.createElement('tr');
-    r.innerHTML=`<td></td><td>${fa(u.games)}<div class=mu>حکم ${fa(u.hokm)} · شطرنج ${fa(u.chess)}</div></td><td>${fa(u.coins)}</td><td><input type=number min=1 placeholder="مبلغ"> <button>+</button></td>`;
-    r.firstChild.textContent=n;const i=r.querySelector('input');
-    r.querySelector('button').onclick=async()=>{const v=parseInt(i.value);if(!(v>0))return;await load();if(S.users[n]){S.users[n].coins+=v;await save()}renderAdmin()};
-    t.appendChild(r)})}
+  me=u;try{sessionStorage.setItem('me',u)}catch(e){}lobby();hello(me);chk()};
+$('out').onclick=()=>{me=null;hello('');try{sessionStorage.removeItem('me')}catch(e){}$('out').classList.add('hide');$('who').textContent='';$('p').value='';show('auth')};
+async function renderAdmin(){const on=await getOnline(),box=$('ul');box.innerHTML='';const names=Object.keys(S.users);
+  if(!names.length){box.textContent='هنوز کاربری نیست';$('ac').textContent='';return}
+  names.sort((a,b)=>on.includes(b)-on.includes(a)).forEach(n=>{const u=S.users[n],d=document.createElement('div');d.className='ur';
+    d.innerHTML=`<div class="row sp"><b></b><span data-n=""></span></div><div class="mu">بازی: ${fa(u.games)} (حکم ${fa(u.hokm)} · شطرنج ${fa(u.chess)}) · برد: ${fa(u.wins)} · سکه: ${fa(u.coins)}</div>
+    <div class="row"><input type="number" min="1" class="a" placeholder="مبلغ"><input class="rs" placeholder="دلیل (اختیاری)"></div>
+    <div class="row"><button data-k="add">➕ افزایش</button><button data-k="sub">➖ کسر</button><button data-k="fine">⚠️ جریمه</button><button data-k="del">🗑 حذف</button></div>`;
+    d.querySelector('b').textContent=n;d.querySelector('[data-n]').dataset.n=n;
+    d.querySelectorAll('button').forEach(b=>b.onclick=()=>act(n,b.dataset.k,d));box.appendChild(d)});
+  updSt(on)}
+function updSt(on){document.querySelectorAll('[data-n]').forEach(e=>e.textContent=on.includes(e.dataset.n)?'🟢 آنلاین':'⚪ آفلاین');
+  $('ac').textContent='کاربران: '+fa(Object.keys(S.users).length)+' · آنلاین: '+fa(Object.keys(S.users).filter(n=>on.includes(n)).length)}
+async function act(n,k,d){const v=parseInt(d.querySelector('.a').value),rs=d.querySelector('.rs').value.trim();
+  if(k==='del'){if(!confirm('کاربر «'+n+'» برای همیشه حذف شود؟'))return}else if(!(v>0))return;
+  await load();const u=S.users[n];if(!u){renderAdmin();return}
+  if(k==='add'){u.coins+=v;u.msg='🎁 مدیر '+fa(v)+' سکه به حساب شما اضافه کرد'}
+  else if(k==='sub')u.coins=Math.max(0,u.coins-v);
+  else if(k==='fine'){u.coins=Math.max(0,u.coins-v);u.msg='⚠️ مدیر شما را '+fa(v)+' سکه جریمه کرد'+(rs?': '+rs:'')}
+  else delete S.users[n];
+  await save();renderAdmin()}
+$('ar').onclick=renderAdmin;
+setInterval(async()=>{if(!$('admin').classList.contains('hide'))updSt(await getOnline())},10000);
+async function chk(){if(!me)return;await load();const u=S.users[me];
+  if(!u){alert('حساب شما توسط مدیر حذف شد');$('out').onclick();return}
+  if(u.msg){const t=$('toast');t.textContent=u.msg;t.classList.remove('hide');u.msg='';await save()}
+  if(!$('lobby').classList.contains('hide'))lobby()}
+setInterval(chk,12000);$('toast').onclick=()=>$('toast').classList.add('hide');
+const GOR=`<svg viewBox="0 0 120 120" width="104" height="104"><circle cx="20" cy="60" r="12" fill="#3a3a3a"/><circle cx="100" cy="60" r="12" fill="#3a3a3a"/><circle cx="20" cy="60" r="6" fill="#b08968"/><circle cx="100" cy="60" r="6" fill="#b08968"/><ellipse cx="60" cy="62" rx="40" ry="42" fill="#3a3a3a"/><path d="M36 30Q60 8 84 30Q60 42 36 30Z" fill="#262626"/><ellipse cx="60" cy="76" rx="27" ry="22" fill="#d2b394"/><ellipse cx="44" cy="55" rx="12" ry="13" fill="#d2b394"/><ellipse cx="76" cy="55" rx="12" ry="13" fill="#d2b394"/><circle cx="44" cy="57" r="7" fill="#fff"/><circle cx="76" cy="57" r="7" fill="#fff"/><circle cx="45.5" cy="58" r="4.2" fill="#111"/><circle cx="74.5" cy="58" r="4.2" fill="#111"/><circle cx="47" cy="56.4" r="1.5" fill="#fff"/><circle cx="76" cy="56.4" r="1.5" fill="#fff"/><path d="M33 44Q44 38 54 45M87 44Q76 38 66 45" stroke="#262626" stroke-width="4" fill="none" stroke-linecap="round"/><ellipse cx="54" cy="71" rx="2.8" ry="3.6" fill="#4a3a30"/><ellipse cx="66" cy="71" rx="2.8" ry="3.6" fill="#4a3a30"/><path d="M47 83Q60 94 73 83" stroke="#4a3a30" stroke-width="3.2" fill="none" stroke-linecap="round"/><ellipse cx="34" cy="78" rx="6" ry="4" fill="#f4a3a3" opacity=".65"/><ellipse cx="86" cy="78" rx="6" ry="4" fill="#f4a3a3" opacity=".65"/></svg>`;
+document.querySelectorAll('.gor').forEach(e=>e.innerHTML=GOR);
+const hideSp=()=>{$('splash').classList.add('out')};$('splash').onclick=hideSp;setTimeout(hideSp,2800);
 async function pay(cost,key){await load();const u=S.users[me];
   if(u.coins<cost){$('me').textContent='سکه کافی نیست. از مدیر بخواهید موجودی شما را افزایش دهد.';return false}
   u.coins-=cost;u.games++;u[key]++;await save();return true}
@@ -253,7 +289,7 @@ function clk(i){if(!C||C.over||!C.black||C.turn!==mc)return;
 
 /* شروع */
 (async()=>{await load();let m=null;try{m=sessionStorage.getItem('me')}catch(e){}
-  if(m&&S.users[m]){me=m;lobby()}})();
+  if(m&&S.users[m]){me=m;lobby();hello(m);chk()}})();
 </script>
 </body>
 </html>
